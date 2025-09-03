@@ -1,0 +1,243 @@
+---
+title: "Operations Intelligence Analyst Technical Test"
+subtitle: "Strategic Insights from Transactional Data"
+author: "Paulo Justiniano Ribeiro Neto"
+date: "today"
+format:
+  revealjs:
+    theme: simple
+    scrollable: false
+    logo: "cloudwalk_logo.png"
+    slide-number: true
+    width: 1280
+    height: 720
+---
+
+```{r setup, include=FALSE}
+# Load necessary libraries
+library(tidyverse)
+library(lubridate)
+library(scales)
+
+# Load and preprocess the data
+payment_data <- read.csv("Operations_analyst_data.csv")
+
+payment_data <- payment_data %>%
+    mutate(
+        day = as_date(day),
+        entity = as_factor(entity),
+        product = as_factor(product),
+        price_tier = as_factor(price_tier),
+        anticipation_method = as_factor(anticipation_method),
+        payment_method = as_factor(payment_method),
+        installments = as_factor(installments)
+    )
+```
+
+## Introduction {.smaller}
+
+### Context & Methodology
+
+**Objective:** To analyze CloudWalk's transaction data to extract strategic insights, identify key performance indicators (KPIs), and propose an automation solution to support data-driven decision-making.
+
+**Methodology:**
+
+1.  **Data Preparation:** Cleaned and transformed the raw dataset using R and the `tidyverse` package, converting data types for robust analysis.
+2.  **Exploratory Analysis:** Generated static visualizations with `ggplot2` to uncover initial trends and patterns in key business areas.
+3.  **Interactive Dashboard:** Developed a [Shiny App](https://paul0justinian0nt.shinyapps.io/CloudWalk_OperationsIntelligenceAnalyst_Challenge/) to allow for dynamic, self-service data exploration by stakeholders.
+4.  **Insight Synthesis:** Interpreted the findings to provide actionable recommendations.
+
+---
+
+## 🎯 Business KPIs
+
+### Total Payment Volume (TPV)
+
+TPV is a critical measure of our business's scale and market penetration. The following slides break down TPV by key segments.
+
+***
+
+```{r tpv-product, echo=FALSE, fig.align='center', message=FALSE, warning=FALSE}
+payment_data %>%
+    group_by(product) %>%
+    summarise(tpv = sum(amount_transacted) / 1000000000) %>%
+    ggplot(aes(x = reorder(product, -tpv), y = tpv)) +
+    geom_bar(stat = "identity", fill = "#007aff") +
+    labs(title = "TPV by Product",
+         x = "Product",
+         y = "TPV (Billions)") +
+    theme_minimal(base_size = 14)
+```
+
+#### Insight: pos and tap Drive Volume. Bank slips a thing of the past?
+
+**Finding:** Products pos and tap account for the largest portion of our Total Payment Volume, indicating they are our flagship products in terms of transaction flow. Bank slips are the least used.
+
+***
+
+```{r tpv-payment-method, echo=FALSE, fig.align='center', message=FALSE, warning=FALSE}
+payment_data %>%
+    group_by(payment_method) %>%
+    summarise(tpv = sum(amount_transacted) / 1000000000) %>%
+    ggplot(aes(x = reorder(payment_method, -tpv), y = tpv)) +
+    geom_bar(stat = "identity", fill = "#34c759") +
+    labs(title = "TPV by Payment Method",
+         subtitle = "Credit cards dominate transaction value",
+         x = "Payment Method",
+         y = "TPV (Billions)") +
+    theme_minimal(base_size = 14)
+```
+
+#### Insight: Credit is King
+
+**Finding:** Credit card payments are the primary driver of TPV.
+---
+
+## 🎯 Business KPIs
+
+### Average Ticket Size
+
+Average Ticket size reveals the value of each transaction, providing a different perspective on product and customer segment performance.
+
+***
+
+```{r avg-ticket-product, echo=FALSE, fig.align='center', message=FALSE, warning=FALSE}
+payment_data %>%
+    group_by(product) %>%
+    summarise(avg_ticket = sum(amount_transacted) / sum(quantity_transactions)) %>%
+    ggplot(aes(x = reorder(product, -avg_ticket), y = avg_ticket)) +
+    geom_bar(stat = "identity", fill = "#ff9500") +
+    labs(title = "Average Ticket Size by Product",
+         x = "Product",
+         y = "Average Ticket Size") +
+    theme_minimal(base_size = 14)
+```
+
+#### Insight: Value vs. Volume
+
+**Finding:** Although bank slips have the lowest TPV, they have the highest average ticket size, followed by link. Meanwhile, pos has a very low average ticket size, while having the highest TPV.
+
+---
+
+## 📈 Transactional Insights
+
+### Installments & Price Tiers
+
+Analyzing transaction characteristics provides insights into customer behavior and business rhythm.
+
+***
+
+```{r installments-analysis, echo=FALSE, fig.align='center', message=FALSE, warning=FALSE}
+payment_data %>%
+    group_by(installments) %>%
+    summarise(total_transactions = sum(quantity_transactions)) %>%
+    ggplot(aes(x = installments, y = total_transactions)) +
+    geom_bar(stat = "identity", fill = "#5856d6") +
+    labs(title = "Transaction Volume by Installments",
+         subtitle = "Single payments represent the core transaction type",
+         x = "Number of Installments",
+         y = "Total Transaction Volume") +
+    theme_minimal(base_size = 14) +
+    scale_y_continuous(labels = comma)
+```
+
+#### Insight: Single Payments Dominate
+
+**Finding:** The vast majority of transactions are made with a single installment.
+
+***
+
+```{r weekday-analysis, echo=FALSE, fig.align='center', message=FALSE, warning=FALSE}
+payment_data %>%
+    mutate(weekday = wday(day, label = TRUE, week_start = 1)) %>%
+    group_by(weekday) %>%
+    summarise(tpv = sum(amount_transacted) / 1000000) %>%
+    ggplot(aes(x = weekday, y = tpv)) +
+    geom_bar(stat = "identity", fill = "#af52de") +
+    labs(title = "TPV by Day of the Week",
+         subtitle = "Transaction volume peaks mid-week",
+         x = "Day of the Week",
+         y = "TPV (Millions)") +
+    theme_minimal(base_size = 14)
+```
+
+***
+
+#### Insight: A Predictable Business Rhythm
+
+**Finding:** TPV consistently peaks mid-week (Wednesday-Thursday) and declines over the weekend.
+
+**Recommendation:** This predictable cycle allows for operational planning. Schedule system maintenance and updates during low-volume weekend periods to minimize merchant impact. Launch marketing campaigns and promotions early in the week to maximize their impact during the peak transaction period.
+
+---
+
+## 🖥️ Interactive Dashboard Demo {.smaller}
+
+For deeper, self-service analysis, an interactive Shiny dashboard was created.
+
+**URL:** [https://paul0justinian0nt.shinyapps.io/CloudWalk_OperationsIntelligenceAnalyst_Challenge/](https://paul0justinian0nt.shinyapps.io/CloudWalk_OperationsIntelligenceAnalyst_Challenge/)
+
+This tool empowers any stakeholder to:
+
+-   **Filter** data by custom date ranges.
+-   **Segment** KPIs (TPV, Average Ticket) by different dimensions.
+-   **Analyze** trends over time on a weekly or monthly basis.
+-   **Explore** the raw data in a searchable table.
+
+This moves us from static reports to a dynamic data exploration environment.
+
+---
+
+## 🤖 Automation Proposal {.smaller}
+
+### The "CloudWalk Sentinel" AI Assistant
+
+To provide proactive and timely insights, I propose an AI-powered assistant.
+
+**Core Features:**
+
+-   **Daily KPI Summaries:** Automated morning briefs on TPV, transaction counts, and average ticket.
+-   **Intelligent Anomaly Detection:** The bot actively monitors data streams and automatically flags significant deviations from historical norms (e.g., a sudden drop in TPV for a specific product).
+-   **Growth & Trend Monitoring:** Provides automated comparisons (Day-over-Day, Week-over-Week) to give context to performance metrics.
+
+---
+
+### "CloudWalk Sentinel" in Action {.smaller}
+
+> **Example 1: Daily Morning Update** ☀️
+>
+> **Good morning! Here is your CloudWalk TPV Sentinel for Wednesday, Sep 3, 2025:**
+>
+> -   **Total TPV:** $15.2M
+> -   **vs. Yesterday:** `+5.8%` 📈
+> -   **vs. Last Wednesday:** `-2.1%` 📉
+> -   **Month-to-Date TPV:** $48.1M
+>
+> **Top Performer:** Product C continues to lead TPV growth. Have a great day!
+
+***
+
+> **Example 2: Automated Anomaly Alert** ⚠️
+>
+> **Alert: Low Average Ticket Detected!**
+>
+> -   **Segment:** Product - **Tap** | Entity - **PJ**
+> -   **Current Avg. Ticket (Last 3 hours):** $85.50
+> -   **Issue:** This is **25% lower** than the 4-week historical average for this time period.
+> -   **Recommendation:** This could indicate a system issue with a high-volume merchant or a processing problem. Please investigate.
+
+---
+
+## **Final Recommendation:**
+
+Leverage the interactive dashboard for ongoing monitoring and empower the team with an automated AI assistant like **"CloudWalk Sentinel"** to move from reactive analysis to a proactive, data-driven operational culture.
+
+## Thank You
+
+#### Contact Information
+
+LinkedIn: www.linkedin.com/in/paulo-justiniano-ribeiro-neto
+
+Email: paulo.neto@ufpr.br
+
+Email: foioneto@gmail.com
