@@ -36,7 +36,9 @@ ui <- page_navbar(
                                   choices = list(
                                       "Product" = "product",
                                       "Entity" = "entity",
-                                      "Payment Method" = "payment_method"
+                                      "Payment Method" = "payment_method",
+                                      "Weekday" = "weekday",
+                                      "Month" = "month"
                                   ),
                                   selected = "product")
                   ),
@@ -201,23 +203,57 @@ server <- function(input, output) {
             filter(day >= input$date_range_trends[1] & day <= input$date_range_trends[2])
     })
     
-    # TPV Plot (updated)
+    # TPV Plot
     output$tpv_plot <- renderPlot({
         data <- filtered_data_tpv()
         
-        plot_data <- data %>%
-            group_by(group_var = !!sym(input$tpv_groupby)) %>%
-            summarise(tpv = sum(amount_transacted) / 1000000000, .groups = 'drop')
-        
-        x_label <- str_to_title(str_replace_all(input$tpv_groupby, "_", " "))
-        y_label <- "TPV (Billions)"
-        title <- paste("Total TPV by", x_label)
-        
-        ggplot(plot_data, aes(x = reorder(group_var, -tpv), y = tpv)) +
-            geom_bar(stat = "identity", fill = "steelblue4", alpha = 0.8) +
-            labs(title = title, x = x_label, y = y_label) +
-            theme_minimal() +
-            theme(axis.text.x = element_text(angle = 45, hjust = 1))
+        if(input$tpv_groupby == "month") {
+            plot_data <- data %>%
+                mutate(group_var = month(day, label = TRUE)) %>%
+                group_by(group_var) %>%
+                summarise(tpv = sum(amount_transacted) / 1000000, .groups = 'drop')
+            
+            x_label <- "Month"
+            y_label <- "TPV (Millions)"
+            title <- "Total Payment Volume (TPV) by Month"
+            
+            ggplot(plot_data, aes(x = group_var, y = tpv)) +
+                geom_bar(stat = "identity", fill = "steelblue4", alpha = 0.8) +
+                labs(title = title, x = x_label, y = y_label) +
+                theme_minimal() +
+                theme(axis.text.x = element_text(angle = 45, hjust = 1))
+            
+        } else if(input$tpv_groupby == "weekday") {
+            plot_data <- data %>%
+                mutate(group_var = wday(day, label = TRUE)) %>%
+                group_by(group_var) %>%
+                summarise(tpv = sum(amount_transacted) / 1000000, .groups = 'drop')
+            
+            x_label <- "Day of the Week"
+            y_label <- "TPV (Millions)"
+            title <- "Total Payment Volume (TPV) by Day of the Week"
+            
+            ggplot(plot_data, aes(x = group_var, y = tpv)) +
+                geom_bar(stat = "identity", fill = "steelblue4", alpha = 0.8) +
+                labs(title = title, x = x_label, y = y_label) +
+                theme_minimal() +
+                theme(axis.text.x = element_text(angle = 45, hjust = 1))
+            
+        } else {
+            plot_data <- data %>%
+                group_by(group_var = !!sym(input$tpv_groupby)) %>%
+                summarise(tpv = sum(amount_transacted) / 1000000000, .groups = 'drop')
+            
+            x_label <- str_to_title(str_replace_all(input$tpv_groupby, "_", " "))
+            y_label <- "TPV (Billions)"
+            title <- paste("Total TPV by", x_label)
+            
+            ggplot(plot_data, aes(x = reorder(group_var, -tpv), y = tpv)) +
+                geom_bar(stat = "identity", fill = "steelblue4", alpha = 0.8) +
+                labs(title = title, x = x_label, y = y_label) +
+                theme_minimal() +
+                theme(axis.text.x = element_text(angle = 45, hjust = 1))
+        }
     })
     
     # Average Ticket Plot
